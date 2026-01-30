@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chaos Game</title>
+<style>
+  body { margin:0; font-family:sans-serif; background:#222; color:#fff; overflow:hidden; }
+  #gameCanvas { background:#444; display:block; margin:0 auto; }
+  .controls { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
+  .btn { background:#888; border:none; padding:15px; border-radius:10px; font-size:18px; color:#fff; }
+  .btn:active { background:#aaa; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<div class="controls">
+  <button class="btn" onclick="move('up')">↑</button>
+  <button class="btn" onclick="move('left')">←</button>
+  <button class="btn" onclick="move('down')">↓</button>
+  <button class="btn" onclick="move('right')">→</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const TILE_SIZE = 40;
+const MAP_COLS = 10;
+const MAP_ROWS = 15;
+
+let player = {x:0, y:0, role:'', tasks:0, alive:true};
+let players = [];
+let tasks = [];
+
+// Random roles
+const roles = ['Civilian','Murderer','Neutral'];
+function assignRoles() {
+  players = [];
+  for(let i=0;i<10;i++){
+    let role = roles[Math.floor(Math.random()*roles.length)];
+    let tasksCount = (role==='Civilian') ? 3 : Math.floor(Math.random()*3);
+    players.push({id:i+1, x:Math.floor(Math.random()*MAP_COLS), y:Math.floor(Math.random()*MAP_ROWS), role:role, tasks:tasksCount, alive:true});
+    if(i===0){player = players[i];} // You are always player 1
+  }
+}
+
+// Tasks
+function generateTasks(){
+  tasks = [];
+  for(let i=0;i<15;i++){
+    tasks.push({x:Math.floor(Math.random()*MAP_COLS), y:Math.floor(Math.random()*MAP_ROWS)});
+  }
+}
+
+// Draw map & players
+function draw(){
+  ctx.fillStyle = '#444';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Draw tasks
+  tasks.forEach(t=>{
+    ctx.fillStyle='yellow';
+    ctx.fillRect(t.x*TILE_SIZE+10, t.y*TILE_SIZE+10, TILE_SIZE-20, TILE_SIZE-20);
+  });
+  // Draw players
+  players.forEach(p=>{
+    if(!p.alive) return;
+    ctx.fillStyle = (p.role==='Civilian')?'cyan':(p.role==='Murderer')?'red':'magenta';
+    ctx.fillRect(p.x*TILE_SIZE+5, p.y*TILE_SIZE+5, TILE_SIZE-10, TILE_SIZE-10);
+    if(p.id===player.id){ctx.strokeStyle='#fff'; ctx.strokeRect(p.x*TILE_SIZE+5, p.y*TILE_SIZE+5, TILE_SIZE-10, TILE_SIZE-10);}
+  });
+}
+
+function move(direction){
+  if(!player.alive) return;
+  switch(direction){
+    case 'up': if(player.y>0) player.y--; break;
+    case 'down': if(player.y<MAP_ROWS-1) player.y++; break;
+    case 'left': if(player.x>0) player.x--; break;
+    case 'right': if(player.x<MAP_COLS-1) player.x++; break;
+  }
+  // Check tasks
+  tasks.forEach((t,i)=>{
+    if(t.x===player.x && t.y===player.y && player.role==='Civilian'){
+      player.tasks--;
+      tasks.splice(i,1);
+    }
+  });
+  draw();
+  checkWin();
+}
+
+function checkWin(){
+  // Civilians win
+  let aliveCivilians = players.filter(p=>p.role==='Civilian' && p.alive);
+  let remainingTasks = aliveCivilians.reduce((sum,p)=>sum+p.tasks,0);
+  if(remainingTasks<=0){alert('Civilians Win!'); location.reload();}
+  // Murderers win
+  let aliveMurderers = players.filter(p=>p.role==='Murderer' && p.alive);
+  if(aliveCivilians.length===0 && aliveMurderers.length>0){alert('Murderers Win!'); location.reload();}
+}
+
+// Initialize game
+function init(){
+  assignRoles();
+  generateTasks();
+  draw();
+}
+
+init();
+</script>
+
+</body>
+</html>
